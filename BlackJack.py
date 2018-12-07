@@ -25,6 +25,7 @@ in_play = False
 end_game = False
 message = ""
 outcome = ""
+value_ace = 0
 dealer_score = 0
 player_score = 0
 hidden_card = []
@@ -96,32 +97,37 @@ class Hand:
         return self.player_hand
 
     def get_value(self):
+        global value_ace
         value = 0
         for card in self.player_hand:
             rank = card.get_rank()
             value = value + VALUES[rank]
+        value_ace = value
         for card in self.player_hand:
             rank = card.get_rank()
-            if rank == 'A' and value <= 11:  # TODO make the ACE work
+            if rank == 'A' and value <= 11:
                 value += 10
         return value
 
 
 def game_loop():  # What does the player want?
-    global message, player, deck, player_value
+    global message, player, deck, player_value, dealer_value
     # Game Loop
     while not player_value > 21:
         # does the player have BJ
         if player_value == 21:
             dealer_move()
         else:
-            message = input('Hit or Stand?\n')  # TODO make sure player enters word correctly
+            message = input('Hit or Stand?\n')
             if message.lower() == 'hit':
                 player.add_card(deck.deal_card())
                 player_value = player.get_value()
             else:
                 dealer_move()
-        print_hands()
+        if player_value < 22:
+            print_player()
+            dealer_value = dealer.get_value()
+            print('Dealer:', hidden_card, '=', get_hidden_value())
     who_busted()
 
 
@@ -138,7 +144,7 @@ def dealer_move():
 
 
 def compare_values():
-    global player_value, dealer_value, message, player_score, dealer_score
+    global player_value, dealer_value, player_score, dealer_score
     if player_value > dealer_value:
         print('Player Wins!')
         player_score += 1
@@ -147,7 +153,8 @@ def compare_values():
         dealer_score += 1
     elif player_value == dealer_value:
         print('Push, Nobody wins')
-    print_hands()
+    print_player()
+    print_dealer()
     print('\nHouse:', dealer_score, 'Player:', player_score)
     exit(0)
 
@@ -161,35 +168,66 @@ def who_busted():
     elif dealer_value > 21:
         player_score += 1
         print('Dealer: Busted\nYou Win!')
-    print_hands()
+    print_player()
+    print_dealer()
     print('\nHouse:', dealer_score, 'Player:', player_score)
     exit(0)
 
 
-def print_hands():
-    global player, dealer
-    print('\nPlayer:', player, '=', player.get_value())
-    print('Dealer:', dealer, '=', dealer.get_value())
+def print_player():
+    global player, player_value, value_ace
+    player_value = player.get_value()
+    if value_ace == player_value:
+        print('\nPlayer:', player, '=', player_value)
+    else:
+        # print player value with ace
+        print('\nPlayer:', player, '=', str(value_ace) + '/' + str(player_value))
+
+
+def print_dealer():
+    global dealer, dealer_value, value_ace
+    dealer_value = dealer.get_value()
+    if value_ace == dealer_value:
+        print('Dealer:', dealer, '=', dealer_value)
+    else:
+        # print dealer card with ace
+        print('Dealer:', dealer, '=', str(value_ace)+'/'+str(dealer_value))
+
+
+def get_hidden_value():
+    global hidden_card
+    hidden_card_value = VALUES[hidden_card.get_rank()]
+    value = 0
+    value = value + hidden_card_value
+    if hidden_card.get_rank() == 'A' and value <= 11:
+        value += 10
+        return str(hidden_card_value) + '/' + str(value)
+    else:
+        return str(hidden_card_value)
 
 
 def start_game():
-    global player, dealer, deck, hidden_card, player_value, dealer_value
+    global player, dealer, deck, hidden_card, player_value, dealer_value, value_ace
     print("Hand:")
     deck = Deck()
     player = Hand()
     dealer = Hand()
     player.add_card(deck.deal_card())  # shown
-    dealer.add_card(deck.deal_card())  # shown
+    dealer.add_card(deck.deal_card())  # hidden
     player.add_card(deck.deal_card())  # shown
-    hidden_card = deck.deal_card()  # hidden # no hole card
+    hidden_card = deck.deal_card()  # no hole card
     dealer.add_card(hidden_card)  # shown
     player_value = player.get_value()
+    if value_ace == player_value:
+        print('Player:', player, '=', str(player_value))
+    else:
+        # print player value with ace
+        print('Player:', player, '=', str(value_ace)+'/'+str(player_value))
     dealer_value = dealer.get_value()
-    print('Player:', player, '=', player_value)
-    print('Dealer:', hidden_card, '=', VALUES[hidden_card.get_rank()])
+    print('Dealer:', hidden_card, '=', get_hidden_value())
     game_loop()
 
-# TODO hide dealer hand when player hits
+# TODO make sure player enters word correctly
 # TODO loop game_loop()
 # TODO multi player mode
 # TODO add betting/money
